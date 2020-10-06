@@ -16,6 +16,10 @@
  */
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.config.DubboProtocolProperties;
+import org.apache.dubbo.common.URL;
+
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -56,6 +60,24 @@ public class UrlUtils {
             }
         }
         return paramsString.toString();
+    }
+
+    public static URL create(DubboProtocolProperties protocolConfig) {
+        return create(protocolConfig.getAddress(), protocolConfig.getGroup(), protocolConfig.getUsername(), protocolConfig.getPassword());
+    }
+
+    public static URL create(String config, String group, String username, String password) {
+        URL url = URL.valueOf(config);
+        if (StringUtils.isNotEmpty(group)) {
+            url = url.addParameter(Constants.GROUP_KEY, group);
+        }
+        if (StringUtils.isNotEmpty(username)) {
+            url = url.setUsername(username);
+        }
+        if (StringUtils.isNotEmpty(password)) {
+            url = url.setPassword(password);
+        }
+        return url;
     }
 
 }

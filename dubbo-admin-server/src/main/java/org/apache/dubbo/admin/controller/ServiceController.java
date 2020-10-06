@@ -26,10 +26,14 @@ import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -49,14 +53,20 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/{env}")
 public class ServiceController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceController.class);
+
     private final ProviderService providerService;
     private final ConsumerService consumerService;
+    private final MetaDataCollector metaDataCollector;
     private final Gson gson;
 
     @Autowired
-    public ServiceController(ProviderService providerService, ConsumerService consumerService) {
+    public ServiceController(ProviderService providerService,
+                             ConsumerService consumerService,
+                             MetaDataCollector metaDataCollector) {
         this.providerService = providerService;
         this.consumerService = consumerService;
+        this.metaDataCollector = metaDataCollector;
         this.gson = new Gson();
     }
 
@@ -97,7 +107,17 @@ public class ServiceController {
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
-        if (metadata != null) {
+
+        String metadataStr = "";
+        //config metadata-report , Dubbo 2.7+
+        if (!(metaDataCollector instanceof NoOpMetadataCollector)) {
+            metadataStr = metaDataCollector.getProviderMetaData(identifier);
+        } else {
+            //dubbo < 2.7
+            metadataStr = providerService.getProviderMetaData(identifier);
+        }
+        if (metadataStr != null && !metadataStr.isEmpty()) {
+            LOG.info("Metadata:" + metadataStr);
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }

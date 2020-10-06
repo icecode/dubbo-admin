@@ -17,15 +17,21 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.common.config.configcenter.DynamicConfiguration;
+
 public class ConfigDTO {
 
     private String key;
+
     private String config;
+
     private String scope;
+
     private String path;
 
     public String getKey() {
-        return key;
+        return Constants.GLOBAL_CONFIG.equalsIgnoreCase(key) ? DynamicConfiguration.DEFAULT_GROUP : key;
     }
 
     public void setKey(String key) {

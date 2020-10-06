@@ -33,6 +33,7 @@ import org.apache.dubbo.admin.model.dto.WeightDTO;
 import org.apache.dubbo.admin.model.store.OverrideConfig;
 import org.apache.dubbo.admin.model.store.OverrideDTO;
 import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.common.config.configcenter.DynamicConfiguration;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -42,17 +43,18 @@ import java.util.Map;
 
 @Component
 public class OverrideServiceImpl extends AbstractService implements OverrideService {
+
     private String prefix = Constants.CONFIG_KEY;
 
     @java.lang.Override
     public void saveOverride(DynamicConfigDTO override) {
         String id = ConvertUtil.getIdFromDTO(override);
         String path = getPath(id);
-        String exitConfig = dynamicConfiguration.getConfig(path);
+        String currentConfig = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         List<OverrideConfig> configs = new ArrayList<>();
         OverrideDTO existOverride = new DynamicConfigDTO2OverrideDTOAdapter(override);
-        if (exitConfig != null) {
-            existOverride = YamlParser.loadObject(exitConfig, OverrideDTO.class);
+        if (currentConfig != null) {
+            existOverride = YamlParser.loadObject(currentConfig, OverrideDTO.class);
             if (existOverride.getConfigs() != null) {
                 for (OverrideConfig overrideConfig : existOverride.getConfigs()) {
                     if (Constants.CONFIGS.contains(overrideConfig.getType())) {
@@ -64,7 +66,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         configs.addAll(override.getConfigs());
         existOverride.setEnabled(override.isEnabled());
         existOverride.setConfigs(configs);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(existOverride));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(existOverride));
 
         //for2.6
         if (StringUtils.isNotEmpty(override.getService())) {
@@ -79,7 +81,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     public void updateOverride(DynamicConfigDTO update) {
         String id = ConvertUtil.getIdFromDTO(update);
         String path = getPath(id);
-        String exitConfig = dynamicConfiguration.getConfig(path);
+        String exitConfig = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (exitConfig == null) {
             //throw exception
         }
@@ -97,7 +99,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         configs.addAll(update.getConfigs());
         overrideDTO.setConfigs(configs);
         overrideDTO.setEnabled(update.isEnabled());
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
         if (StringUtils.isNotEmpty(update.getService())) {
@@ -118,7 +120,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             // throw exception
         }
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (config == null) {
             //throw exception
         }
@@ -132,13 +134,13 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                 }
             }
             if (newConfigs.size() == 0) {
-                dynamicConfiguration.deleteConfig(path);
+                dynamicConfiguration.publishConfig(path, "");
             } else {
                 overrideDTO.setConfigs(newConfigs);
-                dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+                dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
             }
         } else {
-            dynamicConfiguration.deleteConfig(path);
+            dynamicConfiguration.publishConfig(path, "");
         }
 
         //for 2.6
@@ -156,14 +158,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             //throw exception
         }
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (config == null) {
             //throw exception
         }
         OverrideDTO override = YamlParser.loadObject(config, OverrideDTO.class);
         DynamicConfigDTO old = OverrideUtils.createFromOverride(override);
         override.setEnabled(true);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(override));
 
         //2.6
         if (override.getScope().equals(Constants.SERVICE)) {
@@ -183,14 +185,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             //throw exception
         }
         String path = getPath(id);
-        if (dynamicConfiguration.getConfig(path) == null) {
+        if (dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP) == null) {
             //throw exception
         }
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         OverrideDTO override = YamlParser.loadObject(config, OverrideDTO.class);
         DynamicConfigDTO old = OverrideUtils.createFromOverride(override);
         override.setEnabled(false);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(override));
 
         //for 2.6
         if (override.getScope().equals(Constants.SERVICE)) {
@@ -210,7 +212,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             //throw exception
         }
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
             return OverrideUtils.createFromOverride(overrideDTO);
@@ -223,10 +225,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String id = ConvertUtil.getIdFromDTO(weightDTO);
         String scope = ConvertUtil.getScopeFromDTO(weightDTO);
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         OverrideConfig overrideConfig = OverrideUtils.weightDTOtoConfig(weightDTO);
         OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.WEIGHT);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
         if (scope.equals(Constants.SERVICE)) {
@@ -240,7 +242,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String id = ConvertUtil.getIdFromDTO(weightDTO);
         String scope = ConvertUtil.getScopeFromDTO(weightDTO);
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         WeightDTO oldWeight = null;
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
@@ -257,7 +259,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                         break;
                     }
                 }
-                dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+                dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
             } else {
                 //throw exception
             }
@@ -277,7 +279,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     @java.lang.Override
     public void deleteWeight(String id) {
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         OverrideConfig oldConfig = null;
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
@@ -293,9 +295,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                     }
                 }
                 if (configs.size() == 0) {
-                    dynamicConfiguration.deleteConfig(path);
+                    dynamicConfiguration.publishConfig(path, "");
                 } else {
-                    dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+                    dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
                 }
 
             }
@@ -312,7 +314,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     @java.lang.Override
     public WeightDTO findWeight(String id) {
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
             List<OverrideConfig> configs = overrideDTO.getConfigs();
@@ -333,10 +335,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String id = ConvertUtil.getIdFromDTO(balancingDTO);
         String scope = ConvertUtil.getScopeFromDTO(balancingDTO);
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         OverrideConfig overrideConfig = OverrideUtils.balancingDTOtoConfig(balancingDTO);
         OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.BALANCING);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+        dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
 
@@ -350,7 +352,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String id = ConvertUtil.getIdFromDTO(balancingDTO);
         String scope = ConvertUtil.getScopeFromDTO(balancingDTO);
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         BalancingDTO oldBalancing = null;
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
@@ -367,7 +369,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                         break;
                     }
                 }
-                dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+                dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
             } else {
                 //throw exception
             }
@@ -385,7 +387,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     @java.lang.Override
     public void deleteBalance(String id) {
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         OverrideConfig oldConfig = null;
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
@@ -401,9 +403,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                     }
                 }
                 if (configs.size() == 0) {
-                    dynamicConfiguration.deleteConfig(path);
+                    dynamicConfiguration.publishConfig(path, "");
                 } else {
-                    dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
+                    dynamicConfiguration.publishConfig(path, YamlParser.dumpObject(overrideDTO));
                 }
             }
             //for 2.6
@@ -418,7 +420,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     @java.lang.Override
     public BalancingDTO findBalance(String id) {
         String path = getPath(id);
-        String config = dynamicConfiguration.getConfig(path);
+        String config = dynamicConfiguration.getConfig(path, DynamicConfiguration.DEFAULT_GROUP);
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
             List<OverrideConfig> configs = overrideDTO.getConfigs();

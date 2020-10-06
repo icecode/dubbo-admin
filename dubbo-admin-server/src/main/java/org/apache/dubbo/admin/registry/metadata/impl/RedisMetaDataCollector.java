@@ -46,7 +46,6 @@ public class RedisMetaDataCollector implements MetaDataCollector {
     private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);
     private URL url;
     private JedisPool pool;
-    private static final String META_DATA_SOTRE_TAG = ".metaData";
     Set<HostAndPort> jedisClusterNodes;
     private int timeout;
     private String password;
@@ -91,14 +90,14 @@ public class RedisMetaDataCollector implements MetaDataCollector {
         String result = null;
         if (url.getParameter(CLUSTER_KEY, false)) {
             try (JedisCluster jedisCluster = new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig())) {
-                result = jedisCluster.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY) + META_DATA_STORE_TAG);
+                result = jedisCluster.get(identifier.getIdentifierKey());
             } catch (Throwable e) {
                 logger.error("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
                 throw new RpcException("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
             }
         } else {
             try (Jedis jedis = pool.getResource()) {
-                result = jedis.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+                result = jedis.get(identifier.getIdentifierKey());
             } catch (Throwable e) {
                 logger.error("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
                 throw new RpcException("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
