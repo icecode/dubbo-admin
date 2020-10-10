@@ -154,7 +154,7 @@ public class ConfigCenterBeanConfig {
 
         @Override
         public void close() throws Exception {
-            throw new UnsupportedOperationException();
+            //ignore
         }
 
         @Override

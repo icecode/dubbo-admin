@@ -64,11 +64,11 @@ public class ManagementController {
         if (key == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        String oldConfig = dynamicConfiguration.getConfig(key, DynamicConfiguration.DEFAULT_GROUP);
+        String oldConfig = dynamicConfiguration.getConfig(Constants.DUBBO_PROPERTY, key);
         if (oldConfig == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        return dynamicConfiguration.publishConfig(configDTO.getKey(), configDTO.getConfig());
+        return dynamicConfiguration.publishConfig(Constants.DUBBO_PROPERTY, key, configDTO.getConfig());
     }
 
     @RequestMapping(value = "/config/{key}", method = RequestMethod.GET)
@@ -76,13 +76,13 @@ public class ManagementController {
         Set<String> queryApps = new HashSet<>();
         if (key.equals(Constants.ANY_VALUE)) {
             queryApps = providerService.findApplications();
-            queryApps.add(Constants.DUBBO_PROPERTY);
+            queryApps.add(Constants.GLOBAL_CONFIG_GROUP);
         } else {
             queryApps.add(key);
         }
         List<ConfigDTO> ret = new ArrayList<>();
         for (String app : queryApps) {
-            String configContent = dynamicConfiguration.getConfig(app, DynamicConfiguration.DEFAULT_GROUP);
+            String configContent = dynamicConfiguration.getConfig(Constants.DUBBO_PROPERTY, app);
             if (StringUtils.isEmpty(configContent)) {
                 continue;
             }
@@ -104,7 +104,6 @@ public class ManagementController {
 
     @RequestMapping(value = "/config/{key}", method = RequestMethod.DELETE)
     public boolean deleteConfig(@PathVariable String key, @PathVariable String env) {
-        String realKey = Constants.GLOBAL_CONFIG.equals(key) ? Constants.DUBBO_PROPERTY : key;
-        return dynamicConfiguration.publishConfig(realKey, "");
+        return dynamicConfiguration.removeConfig(Constants.DUBBO_PROPERTY, key);
     }
 }

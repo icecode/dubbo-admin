@@ -233,6 +233,7 @@
                 })
             }
           } else {
+            console.log("submit");
             this.$axios.post('/manage/config/', configDTO)
               .then(response => {
                 if (response.status === 201) {
@@ -285,7 +286,7 @@
         if (filter !== null) {
           this.filter = filter
         } else {
-          this.filter = 'global'
+          this.filter = '*'
         }
         this.search()
       }
